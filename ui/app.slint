@@ -1,0 +1,373 @@
+import { ListView, ScrollView } from "std-widgets.slint";
+import { Theme, Icons, Strings, Segment, ResultRow, OpenRule } from "theme.slint";
+import { ThemeButton, RoundButton, ThemeInput, ThemeSelect, ThemeCheck, SectionTitle, Panel, SegmentLine, HintRow, MenuEntry } from "widgets.slint";
+
+export { Theme, Icons, Strings, Segment, ResultRow, OpenRule }
+
+export component AppWindow inherits Window {
+    title: "wff";
+    no-frame: true;
+    background: transparent;
+    always-on-top: true;
+    width: 720px;
+    height: root.show-settings ? 450px : (root.results.length > 0 ? 620px : (root.status == "" ? 134px : 160px));
+
+    animate height { duration: 170ms; easing: ease-out; }
+
+    in property <string> folder: "";
+    in property <string> status: "";
+    in property <bool> busy: false;
+    in property <[ResultRow]> results;
+    in property <[OpenRule]> rules;
+    in property <[string]> templates;
+    in property <[string]> languages;
+    in property <bool> backdrop-ready: false;
+    in property <bool> context-menu-enabled: false;
+    in property <bool> cli-enabled: false;
+    in property <float> ui-scale: 1.0;
+
+    in-out property <bool> show-settings: false;
+
+    forward-focus: search-box;
+
+    callback pick-folder();
+    callback search(string);
+    callback open-result(string, int);
+    callback reveal-result(string);
+    callback add-rule();
+    callback remove-rule(int);
+    callback edit-extension(int, string);
+    callback edit-command(int, string);
+    callback pick-template(int, int);
+    callback pick-language(int);
+    callback save-rules();
+    callback toggle-context-menu(bool);
+    callback toggle-cli(bool);
+    callback dismiss();
+    callback recenter(float, float);
+
+    property <bool> compact: !root.show-settings && root.results.length == 0;
+
+    changed height => { root.recenter(root.width / 1px, root.height / 1px); }
+
+    FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape) {
+                root.dismiss();
+                return accept;
+            }
+            return reject;
+        }
+
+        Rectangle {
+            width: parent.width;
+            height: parent.height;
+            background: root.backdrop-ready ? Theme.card : Theme.card-solid;
+            clip: true;
+
+            animate background { duration: 180ms; easing: ease-out; }
+
+            VerticalLayout {
+                padding: 10px;
+                spacing: 0px;
+
+                HorizontalLayout {
+                    spacing: 8px;
+
+                    search-box := ThemeInput {
+                        flat: true;
+                        text-size: 17px;
+                        placeholder: Strings.search-placeholder;
+                        edited(value) => { root.search(value); }
+                    }
+
+                    VerticalLayout {
+                        alignment: center;
+                        horizontal-stretch: 0;
+
+                        RoundButton {
+                            clicked => { root.show-settings = !root.show-settings; }
+                        }
+                    }
+
+                    VerticalLayout {
+                        alignment: center;
+                        horizontal-stretch: 0;
+
+                        RoundButton {
+                            shape: Icons.close;
+                            clicked => { root.dismiss(); }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    height: 1px;
+                    background: Theme.card-line;
+                }
+
+                if root.status != "": HorizontalLayout {
+                    height: 26px;
+                    spacing: 8px;
+                    padding-left: 4px;
+
+                    if root.busy: VerticalLayout {
+                        alignment: center;
+                        horizontal-stretch: 0;
+
+                        Rectangle {
+                            width: 6px;
+                            height: 6px;
+                            border-radius: 3px;
+                            background: Theme.accent;
+                            opacity: 0.4;
+
+                            animate opacity { duration: 600ms; iteration-count: -1; direction: alternate; }
+                        }
+                    }
+
+                    Text {
+                        text: root.status;
+                        font-family: Theme.sans;
+                        font-size: 11px;
+                        color: Theme.text-muted;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                }
+
+                if root.compact: VerticalLayout {
+                    padding-top: 6px;
+                    spacing: 2px;
+
+                    HintRow {
+                        shape: Icons.folder;
+                        title: root.folder == "" ? Strings.hint-folder-title : root.folder;
+                        note: root.folder == "" ? Strings.hint-folder-note : Strings.hint-folder-note-selected;
+                        actionable: true;
+                        activated => { root.pick-folder(); }
+                    }
+                }
+
+                if !root.compact && !root.show-settings: ListView {
+                    for row in root.results: item := Rectangle {
+                        property <length> menu-x;
+                        property <length> menu-y;
+
+                        height: row.has-body ? 52px : 34px;
+                        background: card.has-hover ? Theme.glass-hover : transparent;
+
+                        animate background { duration: 100ms; }
+
+                        card := TouchArea {
+                            mouse-cursor: pointer;
+                            double-clicked => { root.open-result(row.path, row.line); }
+                            pointer-event(event) => {
+                                // On release: the release after a press would count as a click
+                                // outside and close the menu immediately.
+                                if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
+                                    // Snapshot the position so the menu does not follow the mouse.
+                                    item.menu-x = self.mouse-x;
+                                    item.menu-y = self.mouse-y;
+                                    menu.show();
+                                }
+                            }
+                        }
+
+                        menu := PopupWindow {
+                            x: item.menu-x / root.ui-scale;
+                            y: item.menu-y / root.ui-scale;
+                            width: 212px;
+                            height: 72px;
+                            close-policy: close-on-click-outside;
+
+                            Rectangle {
+                                background: Theme.deep;
+                                border-radius: Theme.radius;
+                                border-width: 1px;
+                                border-color: Theme.card-line;
+                                drop-shadow-blur: 18px;
+                                drop-shadow-color: #0d1a2b99;
+
+                                VerticalLayout {
+                                    padding: 5px;
+                                    spacing: 2px;
+
+                                    MenuEntry {
+                                        label: Strings.menu-open;
+                                        shape: Icons.launch;
+                                        chosen => {
+                                            root.open-result(row.path, row.line);
+                                            menu.close();
+                                        }
+                                    }
+
+                                    MenuEntry {
+                                        label: Strings.menu-reveal;
+                                        shape: Icons.folder;
+                                        chosen => {
+                                            root.reveal-result(row.path);
+                                            menu.close();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        VerticalLayout {
+                            padding-left: 12px;
+                            padding-right: 12px;
+                            padding-top: 6px;
+                            padding-bottom: 6px;
+                            spacing: 3px;
+
+                            SegmentLine {
+                                parts: row.header;
+                                size: 13px;
+                                face: Theme.sans;
+                                tone: Theme.text-strong;
+                            }
+
+                            if row.has-body: SegmentLine {
+                                parts: row.body;
+                                size: 12px;
+                                face: Theme.mono;
+                                tone: Theme.text-muted;
+                            }
+                        }
+                    }
+                }
+
+                if root.show-settings: ScrollView {
+                    VerticalLayout {
+                        padding-top: 12px;
+                        padding-left: 4px;
+                        padding-right: 4px;
+                        padding-bottom: 4px;
+                        spacing: 18px;
+
+                        VerticalLayout {
+                            spacing: 10px;
+
+                            SectionTitle {
+                                title: Strings.language-section;
+                                note: Strings.language-note;
+                            }
+
+                            HorizontalLayout {
+                                alignment: start;
+
+                                ThemeSelect {
+                                    width: 200px;
+                                    label: Strings.language-current;
+                                    options: root.languages;
+                                    picked(choice) => { root.pick-language(choice); }
+                                }
+                            }
+                        }
+
+                        VerticalLayout {
+                            spacing: 10px;
+
+                            HorizontalLayout {
+                                spacing: 12px;
+
+                                SectionTitle {
+                                    title: Strings.open-with-section;
+                                    note: Strings.open-with-note;
+                                }
+
+                                VerticalLayout {
+                                    alignment: center;
+                                    horizontal-stretch: 0;
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+
+                                        ThemeButton {
+                                            label: Strings.rule-add;
+                                            clicked => { root.add-rule(); }
+                                        }
+
+                                        ThemeButton {
+                                            label: Strings.rule-save;
+                                            primary: true;
+                                            clicked => { root.save-rules(); }
+                                        }
+                                    }
+                                }
+                            }
+
+                            VerticalLayout {
+                                spacing: 6px;
+
+                                for rule[index] in root.rules: HorizontalLayout {
+                                    spacing: 8px;
+
+                                    ThemeInput {
+                                        width: 96px;
+                                        text: rule.extension;
+                                        placeholder: Strings.rule-extension-placeholder;
+                                        edited(value) => { root.edit-extension(index, value); }
+                                    }
+
+                                    ThemeInput {
+                                        text: rule.command;
+                                        placeholder: Strings.rule-command-placeholder;
+                                        edited(value) => { root.edit-command(index, value); }
+                                    }
+
+                                    ThemeSelect {
+                                        width: 168px;
+                                        label: Strings.template-pick;
+                                        options: root.templates;
+                                        picked(choice) => { root.pick-template(index, choice); }
+                                    }
+
+                                    ThemeButton {
+                                        width: 36px;
+                                        label: "×";
+                                        clicked => { root.remove-rule(index); }
+                                    }
+                                }
+                            }
+                        }
+
+                        VerticalLayout {
+                            spacing: 10px;
+
+                            SectionTitle {
+                                title: Strings.windows-section;
+                                note: Strings.windows-note;
+                            }
+
+                            Panel {
+                                height: 86px;
+
+                                VerticalLayout {
+                                    padding-left: 14px;
+                                    padding-right: 14px;
+                                    padding-top: 12px;
+                                    padding-bottom: 12px;
+                                    spacing: 10px;
+
+                                    ThemeCheck {
+                                        checked: root.context-menu-enabled;
+                                        label: Strings.context-menu-option;
+                                        toggled(value) => { root.toggle-context-menu(value); }
+                                    }
+
+                                    ThemeCheck {
+                                        checked: root.cli-enabled;
+                                        label: Strings.cli-option;
+                                        toggled(value) => { root.toggle-cli(value); }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

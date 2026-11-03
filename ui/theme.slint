@@ -1,0 +1,82 @@
+export struct Segment {
+    text: string,
+    hit: bool,
+}
+
+export struct ResultRow {
+    header: [Segment],
+    body: [Segment],
+    has-body: bool,
+    path: string,
+    line: int,
+}
+
+export struct OpenRule {
+    extension: string,
+    command: string,
+}
+
+export global Theme {
+    out property <color> deep: #223A5E;
+    out property <color> accent: #6E9ECC;
+    out property <color> light: #9FC0E3;
+    out property <color> very-light: #D0E1F2;
+    out property <color> off-white: #F3F8FD;
+
+    out property <color> text-strong: Theme.off-white;
+    out property <color> text-soft: Theme.very-light;
+    out property <color> text-muted: Theme.light;
+
+    out property <color> glass: #F3F8FD1a;
+    out property <color> glass-hover: #F3F8FD2b;
+    out property <color> glass-press: #F3F8FD3d;
+    out property <color> glass-line: #D0E1F233;
+
+    out property <color> card: transparent;
+    out property <color> card-solid: #1b2f4d;
+    out property <color> card-line: #9FC0E338;
+
+    out property <color> mark: Theme.light;
+    out property <color> on-mark: Theme.deep;
+
+    out property <color> fill: Theme.very-light;
+    out property <color> fill-hover: Theme.off-white;
+    out property <color> fill-press: Theme.light;
+    out property <color> on-fill: Theme.deep;
+
+    out property <length> radius: 8px;
+    out property <length> control: 34px;
+    out property <string> sans: "Segoe UI Variable";
+    out property <string> mono: "Consolas";
+}
+
+export global Icons {
+    out property <string> search: "M 7 1.5 A 5.5 5.5 0 1 0 7 12.5 A 5.5 5.5 0 1 0 7 1.5 M 11 11 L 14.5 14.5";
+    out property <string> folder: "M 1.5 12.5 L 1.5 3.5 L 6 3.5 L 7.5 5.5 L 14.5 5.5 L 14.5 12.5 Z";
+    out property <string> chevron: "M 4.5 6.5 L 8 10 L 11.5 6.5";
+    out property <string> close: "M 4.5 4.5 L 11.5 11.5 M 11.5 4.5 L 4.5 11.5";
+    out property <string> launch: "M 9 2.5 L 13.5 2.5 L 13.5 7 M 13.5 2.5 L 7.5 8.5 M 11.5 9.5 L 11.5 13.5 L 2.5 13.5 L 2.5 4.5 L 6.5 4.5";
+}
+
+export global Strings {
+    in property <string> search-placeholder;
+    in property <string> hint-folder-title;
+    in property <string> hint-folder-note;
+    in property <string> hint-folder-note-selected;
+    in property <string> language-section;
+    in property <string> language-note;
+    in property <string> language-current;
+    in property <string> open-with-section;
+    in property <string> open-with-note;
+    in property <string> rule-add;
+    in property <string> rule-save;
+    in property <string> rule-extension-placeholder;
+    in property <string> rule-command-placeholder;
+    in property <string> template-pick;
+    in property <string> windows-section;
+    in property <string> windows-note;
+    in property <string> context-menu-option;
+    in property <string> cli-option;
+    in property <string> menu-open;
+    in property <string> menu-reveal;
+}
